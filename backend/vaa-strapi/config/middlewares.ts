@@ -12,8 +12,20 @@ module.exports = ({ env }) => [
         useDefaults: true,
         directives: {
           'connect-src': ["'self'", env('NODE_ENV') === 'development' ? 'http:' : 'https:'],
-          'img-src': ["'self'", 'data:', 'blob:', 'market-assets.strapi.io', `${env('STATIC_CONTENT_BASE_URL')}`],
-          'media-src': ["'self'", 'data:', 'blob:', 'market-assets.strapi.io', `${env('STATIC_CONTENT_BASE_URL')}`],
+          'img-src': [
+            "'self'",
+            'data:',
+            'blob:',
+            'market-assets.strapi.io',
+            ...(env('STATIC_CONTENT_BASE_URL') ? [env('STATIC_CONTENT_BASE_URL')] : [])
+          ],
+          'media-src': [
+            "'self'",
+            'data:',
+            'blob:',
+            'market-assets.strapi.io',
+            ...(env('STATIC_CONTENT_BASE_URL') ? [env('STATIC_CONTENT_BASE_URL')] : [])
+          ],
           upgradeInsecureRequests: null
         }
       }

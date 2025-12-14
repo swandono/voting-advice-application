@@ -1,0 +1,116 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  strapi:
+    build:
+      context: .
+      dockerfile: backend/vaa-strapi/Dockerfile
+      target: production
+      args:
+        NODE_ENV: production
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      STRAPI_HOST: 0.0.0.0
+      STRAPI_PORT: 1337
+
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_SCHEMA: ${DATABASE_SCHEMA:-public}
+      DATABASE_SSL_SELF: ${DATABASE_SSL_SELF:-false}
+
+      APP_KEYS: ${APP_KEYS}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+
+      PUBLIC_BROWSER_FRONTEND_URL: ${PUBLIC_BROWSER_FRONTEND_URL}
+      PUBLIC_BROWSER_BACKEND_URL: ${PUBLIC_BROWSER_BACKEND_URL}
+
+      # Defaults for non-AWS deployments
+      UPLOAD_PROVIDER: ${UPLOAD_PROVIDER:-local}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+
+      # SMTP (EMAIL_PROVIDER=smtp)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+
+      MAIL_FROM: ${MAIL_FROM}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
+      MAIL_REPLY_TO: ${MAIL_REPLY_TO}
+
+      # S3/SES (optional; set EMAIL_PROVIDER=ses and/or UPLOAD_PROVIDER=s3)
+      AWS_SES_ACCESS_KEY_ID: ${AWS_SES_ACCESS_KEY_ID:-}
+      AWS_SES_SECRET_ACCESS_KEY: ${AWS_SES_SECRET_ACCESS_KEY:-}
+      AWS_SES_REGION: ${AWS_SES_REGION:-}
+      AWS_S3_ACCESS_KEY_ID: ${AWS_S3_ACCESS_KEY_ID:-}
+      AWS_S3_ACCESS_SECRET: ${AWS_S3_ACCESS_SECRET:-}
+      AWS_S3_REGION: ${AWS_S3_REGION:-}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      STATIC_CONTENT_BASE_URL: ${STATIC_CONTENT_BASE_URL:-}
+      STATIC_MEDIA_CONTENT_PATH: ${STATIC_MEDIA_CONTENT_PATH:-public/media}
+      LOCALSTACK_ENDPOINT: ${LOCALSTACK_ENDPOINT:-}
+
+    volumes:
+      - strapi-uploads:/opt/backend/vaa-strapi/public/uploads
+    expose:
+      - "1337"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: production
+      args:
+        NODE_ENV: production
+    restart: unless-stopped
+    depends_on:
+      - strapi
+    environment:
+      NODE_ENV: production
+
+      PUBLIC_BROWSER_BACKEND_URL: ${PUBLIC_BROWSER_BACKEND_URL}
+      PUBLIC_SERVER_BACKEND_URL: ${PUBLIC_SERVER_BACKEND_URL:-${PUBLIC_BROWSER_BACKEND_URL}}
+
+      PUBLIC_BROWSER_FRONTEND_URL: ${PUBLIC_BROWSER_FRONTEND_URL}
+      PUBLIC_SERVER_FRONTEND_URL: ${PUBLIC_SERVER_FRONTEND_URL:-${PUBLIC_BROWSER_FRONTEND_URL}}
+
+      PUBLIC_DEBUG: ${PUBLIC_DEBUG:-false}
+
+      PUBLIC_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT: ${PUBLIC_IDENTITY_PROVIDER_AUTHORIZATION_ENDPOINT:-}
+      IDENTITY_PROVIDER_TOKEN_ENDPOINT: ${IDENTITY_PROVIDER_TOKEN_ENDPOINT:-}
+      IDENTITY_PROVIDER_JWKS_URI: ${IDENTITY_PROVIDER_JWKS_URI:-}
+      IDENTITY_PROVIDER_ISSUER: ${IDENTITY_PROVIDER_ISSUER:-}
+      PUBLIC_IDENTITY_PROVIDER_CLIENT_ID: ${PUBLIC_IDENTITY_PROVIDER_CLIENT_ID:-}
+      IDENTITY_PROVIDER_CLIENT_SECRET: ${IDENTITY_PROVIDER_CLIENT_SECRET:-}
+      IDENTITY_PROVIDER_DECRYPTION_JWKS: ${IDENTITY_PROVIDER_DECRYPTION_JWKS:-}
+      BACKEND_API_TOKEN: ${BACKEND_API_TOKEN:-}
+    expose:
+      - "3000"
+
+volumes:
+  postgres-data:
+  strapi-uploads:
+

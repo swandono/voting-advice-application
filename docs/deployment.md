@@ -18,6 +18,10 @@ Recent (2024–2025) realized costs on Render have been:
 
 The instructions below detail how the application is deployed using [Render](https://render.com/) and [AWS](https://aws.amazon.com/) for email and media CDN, but the process is essentially the same with other cloud infrastructure providers.
 
+## Setup with Coolify (no AWS)
+
+See `docs/coolify.md`.
+
 ### 1. Fork
 
 Fork the repo and make any changes you need to the source code. You’ll most likely need to edit at least:

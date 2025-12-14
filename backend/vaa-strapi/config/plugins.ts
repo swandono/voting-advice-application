@@ -3,20 +3,28 @@ const aws = require('@aws-sdk/client-ses');
 
 export default ({ env }) => {
   const isDev = env('NODE_ENV') === 'development';
+  const emailProvider = env('EMAIL_PROVIDER', 'smtp');
+  const uploadProvider = env('UPLOAD_PROVIDER', 'local');
 
-  return {
-    'users-permissions': {
-      config: {
-        jwt: {
-          expiresIn: '4h'
-        },
-        register: {
-          allowedFields: ['candidate']
-        }
-      }
-    },
-    email: {
-      config: {
+  const smtpProviderOptions = () => {
+    const host = env('SMTP_HOST');
+    const port = env.int('SMTP_PORT', 587);
+    const secure = env.bool('SMTP_SECURE', port === 465);
+    const user = env('SMTP_USER');
+    const pass = env('SMTP_PASS');
+
+    if (!host) return undefined;
+
+    const base = { host, port, secure };
+    if (user && pass) {
+      return { ...base, auth: { user, pass } };
+    }
+    return base;
+  };
+
+  const emailConfig = () => {
+    if (emailProvider === 'ses') {
+      return {
         provider: 'nodemailer',
         providerOptions: {
           SES: {
@@ -38,10 +46,25 @@ export default ({ env }) => {
           defaultFrom: env('MAIL_FROM'),
           defaultReplyTo: env('MAIL_REPLY_TO')
         }
+      };
+    }
+
+    const smtpOptions = smtpProviderOptions();
+    if (!smtpOptions) return undefined;
+
+    return {
+      provider: 'nodemailer',
+      providerOptions: smtpOptions,
+      settings: {
+        defaultFrom: env('MAIL_FROM'),
+        defaultReplyTo: env('MAIL_REPLY_TO')
       }
-    },
-    upload: {
-      config: {
+    };
+  };
+
+  const uploadConfig = () => {
+    if (uploadProvider === 's3') {
+      return {
         provider: 'aws-s3',
         providerOptions: {
           /*
@@ -78,6 +101,34 @@ export default ({ env }) => {
           uploadStream: {},
           delete: {}
         }
+      };
+    }
+
+    return {
+      provider: 'local',
+      providerOptions: {
+        sizeLimit: 20 * 1024 * 1024 // ~20mb in bytes
+      }
+    };
+  };
+
+  const resolvedEmailConfig = emailConfig();
+
+  return {
+    'users-permissions': {
+      config: {
+        jwt: {
+          expiresIn: '4h'
+        },
+        register: {
+          allowedFields: ['candidate']
+        }
+      }
+    },
+    ...(resolvedEmailConfig ? { email: { config: resolvedEmailConfig } } : {}),
+    upload: {
+      config: {
+        ...uploadConfig()
       }
     },
     'openvaa-admin-tools': {
